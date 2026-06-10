@@ -24,7 +24,7 @@
 ## 2. 전체 아키텍처 (Architecture)
 
 1. **Boot & Init**: 시스템 부팅 시 `main.py` 자동 실행
-2. **Library Scan**: 지정된 경로(`music` 파일 참조) 내의 음원 파일 스캔 (`.mp3` 등)
+2. **Library Scan**: 지정된 경로(`music` 파일 참조) 내의 음원 파일 스캔 (`.mp3`)
 3. **State Check**: 
    - 기존 `state.json` 확인
    - 저장된 덱(Deck)이 있다면 **복원(Resume)**
@@ -69,27 +69,33 @@
 
 ### 설치 단계 (Installation)
 1. **시스템 패키지 설치 (필수)**
-   VLC 플레이어의 코어 라이브러리가 필요합니다.
+   `python-vlc`는 Python 패키지이지만, 실제 재생에는 OS에 설치된 VLC와 `libVLC`가 필요합니다.
    ```bash
    sudo apt-get update
    sudo apt-get install vlc libvlc-dev
+   ```
+
 2. **프로젝트 클론 및 패키지 설치**
-```bash
-   git clone https://github.com/YOUR_USERNAME/auto-turntable.git
-   cd auto-turntable
+   ```bash
+   git clone https://github.com/Hong3651/Project_Turntable.git
+   cd Project_Turntable
+   python3 -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
-```
+   ```
 
 3. **음악 폴더 경로 설정**
    프로젝트 루트에 `music` 파일(확장자 없음)을 생성하고, 음악 폴더 경로를 입력합니다.
-```bash
+   ```bash
    echo "/home/pi/Music" > music
-```
+   ```
 
 4. **테스트 실행**
-```bash
+   ```bash
    python main.py
-```
+   ```
+
+   정상 실행되면 `music` 파일에 적힌 폴더를 스캔하고, 첫 번째 셔플 덱을 만든 뒤 VLC로 재생을 시작합니다.
 
 ### 부팅 시 자동 실행 (systemd)
 
@@ -109,8 +115,8 @@
    [Service]
    Type=simple
    User=pi
-   WorkingDirectory=/home/pi/auto-turntable
-   ExecStart=/usr/bin/python3 /home/pi/auto-turntable/main.py
+   WorkingDirectory=/home/pi/Project_Turntable
+   ExecStart=/home/pi/Project_Turntable/.venv/bin/python /home/pi/Project_Turntable/main.py
    Restart=on-failure
    RestartSec=5
 
@@ -137,8 +143,30 @@
 | 동작 | 설명 |
 |------|------|
 | 전원 ON | 자동으로 음악 재생 시작 |
-| 전원 OFF | 현재 상태 저장 (다음 부팅 시 이어서 재생) |
-| 덱 초기화 | `state.json` 삭제 또는 코드에서 `reset_state()` 호출 |
+| 정상 종료 | Ctrl+C 또는 SIGTERM 수신 시 현재 덱 상태 저장 |
+| 전원 OFF | 마지막으로 저장된 상태 기준으로 다음 부팅 시 이어서 재생 |
+| 덱 초기화 | 프로그램을 멈춘 뒤 `state.json` 삭제 또는 코드에서 `reset_state()` 호출 |
+
+### 상태 파일 관리 (State)
+
+- `state.json`은 재생이 끝날 때마다 자동 생성/갱신됩니다.
+- 저장된 덱이 남아 있으면 재부팅 후 해당 덱을 이어서 사용합니다.
+- `state.json`이 손상되었거나 형식이 맞지 않으면 경고를 출력하고 새 셔플 덱을 만듭니다.
+- 완전히 새 덱으로 다시 시작하고 싶다면 프로그램을 멈춘 뒤 아래 명령으로 상태 파일을 삭제합니다.
+
+```bash
+rm -f state.json
+```
+
+### 문제 해결 (Troubleshooting)
+
+| 증상 | 확인할 내용 |
+|------|-------------|
+| `ModuleNotFoundError: No module named 'vlc'` | 가상환경 활성화 후 `pip install -r requirements.txt`를 다시 실행 |
+| VLC 관련 오류 | `sudo apt-get install vlc libvlc-dev` 설치 여부 확인 |
+| `Missing 'music' file` | 프로젝트 루트에 `music` 파일이 있는지 확인 |
+| `Music directory not found` | `music` 파일 첫 줄의 경로가 실제 음악 폴더인지 확인 |
+| `No mp3 files found` | 음악 폴더 아래에 `.mp3` 파일이 있는지 확인 |
 
 ---
 
@@ -152,4 +180,6 @@ auto-turntable/
 ├── state.py         # 상태 저장/복원
 ├── requirements.txt # Python 의존성
 ├── music            # 음악 폴더 경로 (사용자 생성)
-└── state.json       # 재생 상태 (자동 생성)
+├── state.json       # 재생 상태 (자동 생성)
+└── state.json.tmp   # 상태 저장 중 생성되는 임시 파일
+```

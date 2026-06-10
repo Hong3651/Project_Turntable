@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 state.json     
+state.json.tmp
 music_list          
 .DS_Store
 .venv/

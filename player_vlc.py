@@ -3,16 +3,18 @@ from pathlib import Path
 import vlc
 
 def play_track_blocking(track_path: str) -> None:
-    instance = vlc.Instance()
+    instance = vlc.Instance("--no-xlib", "--quiet")
     player = instance.media_player_new()
 
     media = instance.media_new(track_path)
     player.set_media(media)
 
     print(f"Now playing: {Path(track_path).name}")
-    player.play()
+    result = player.play()
+    if result == -1:
+        raise RuntimeError(f"VLC failed to start playback: {track_path}")
 
-    # 재생 시작 대기(일부 환경에서 필요)
+    # libVLC가 재생 상태로 진입할 시간을 짧게 둔다.
     time.sleep(0.3)
 
     while True:

@@ -5,13 +5,14 @@ from pathlib import Path
 from library import scan_mp3
 from recommender import build_shuffle_deck
 from player_vlc import play_track_blocking
-from state import PlayerState, load_state, save_state, reset_state
+from state import PlayerState, load_state, save_state
 
 MUSIC_FILE = Path("music")
 
 # 전역 변수 
 deck = []
 history = []
+current_track = None
 
 def read_music_dir() -> str:
     if not MUSIC_FILE.exists():
@@ -26,11 +27,14 @@ def read_music_dir() -> str:
 def handle_exit(sig, frame):
     """Ctrl+C 또는 SIGTERM 시 상태 저장 후 종료"""
     print("\n[INFO] Saving state and exiting...")
-    save_state(PlayerState(deck=deck, history=history))
+    pending_deck = list(deck)
+    if current_track is not None:
+        pending_deck.insert(0, current_track)
+    save_state(PlayerState(deck=pending_deck, history=history))
     sys.exit(0)
 
 def main():
-    global deck, history
+    global deck, history, current_track
     
     # 시그널 핸들러 등록
     signal.signal(signal.SIGINT, handle_exit)
@@ -57,11 +61,14 @@ def main():
             print("[INFO] Deck finished. Reshuffling...")
 
         track = deck.pop(0)
+        current_track = track
 
         try:
             play_track_blocking(track)
         except Exception as e:
             print(f"[WARN] Skip failed track: {track}\n       Reason: {e}")
+        finally:
+            current_track = None
 
         history.append(track)
         save_state(PlayerState(deck=deck, history=history))

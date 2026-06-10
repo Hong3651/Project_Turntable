@@ -1,5 +1,1 @@
-
-# Based on Raspberry Pi OS (Bullseye) 
-Python 3.9
-
-Python-vlc==3.0.*
+python-vlc==3.0.*
